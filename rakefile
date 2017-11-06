@@ -1,0 +1,153 @@
+#!/usr/bin/env rake
+require "rake/clean"
+ENV["R1"] ? @read1 = ENV["R1"] : nil
+@read1 ? @R1_basename  = "#{@read1}".split(".")[0].split("/")[-1] : nil
+
+ENV["R2"] ? @read2 = ENV["R2"] : nil
+@read2 ? @R2_basename = "#{@read2}".split(".")[0].split("/")[-1] : nil
+
+ENV["samplename"] ? @sample=ENV["samplename"] : nil
+ENV["sampleid"] ? @sampleid=ENV["sampleid"] : nil
+ENV["reference"] ? @reference=ENV["reference"] : nil
+@reference ? @refindex = "#{@reference}".split(".")[0] : nil
+
+
+
+ENV["gtf"] ? @gtf=ENV["gtf"] : nil
+if (@gtf == nil || @gtf == "")
+  @gtf=""
+else
+  @gtf=" --GTF " + @gtf
+end
+
+ENV["transcriptome_index"] ? @transcriptome_index=ENV["transcriptome_index"] : nil
+if (@transcriptome_index == nil || @transcriptome_index == "")
+  @transcriptome_index=""
+else
+  @Tindex="#{@transcriptome_index}".split(".")[0]
+  @transcriptome_index_for_cmd=" --transcriptome-index " + @Tindex
+  #puts "#{@Tindex} #{@transcriptome_index_for_cmd}"
+end
+
+directory  "results"
+
+desc "Do fastqc quality check of the input data reads"
+namespace :fastqc  do
+
+  directory  "results/#{@sampleid}"
+  desc "do fastqc for R1"
+
+  file "results/#{@sampleid}/#{@R1_basename}_fastqc.html" => [ "results/#{@sampleid}", "#{@read1}"] do
+    sh "source fastqc-0.11.5; fastqc -outdir results/#{@sampleid} -extract #{@read1}"
+  end
+  file "results/#{@sampleid}/#{@R1_basename}_fastqc.zip" => [ "results/#{@sampleid}", "#{@read1}"] do
+  end
+  file "results/#{@sampleid}/#{@R1_basename}_fastqc" => [ "results/#{@sampleid}", "#{@read1}"] do
+  end
+
+  task :R1 => ["results/#{@sampleid}/#{@R1_basename}_fastqc.html", "results/#{@sampleid}/#{@R1_basename}_fastqc.zip", "results/#{@sampleid}/#{@R1_basename}_fastqc"] do
+    puts "R1 FASTQC completed"
+  end
+
+  desc "do fastqc for R2"
+  file "results/#{@sampleid}/#{@R2_basename}_fastqc.html" => [ "results/#{@sampleid}", "#{@read2}"] do
+    sh "source fastqc-0.11.5;fastqc -outdir results/#{@sampleid} -extract #{@read2}"
+  end
+  file "results/#{@sampleid}/#{@R2_basename}_fastqc.zip" => [ "results/#{@sampleid}", "#{@read2}"] do
+  end
+  file "results/#{@sampleid}/#{@R2_basename}_fastqc" => [ "results/#{@sampleid}", "#{@read2}"] do
+  end
+
+  task :R2 => ["results/#{@sampleid}/#{@R2_basename}_fastqc.html", "results/#{@sampleid}/#{@R2_basename}_fastqc.zip", "results/#{@sampleid}/#{@R2_basename}_fastqc"] do
+    puts "R2 FASTQC completed"
+  end
+
+
+  task :run => [ :R1, :R2 ] do
+  end
+end
+
+namespace :trimmomatic do
+  desc "Runs Trimmomatic quality trimming tool"
+  file "results/#{@sampleid}/#{@R1_basename}_paired.fastq" => ["#{@read1}", "#{@read2}"] do
+    sh "source trimmomatic-0.36; source jre-1.7.0.11; trimmomatic PE -threads 2 -phred33 -quiet #{@read1} #{@read2} results/#{@sampleid}/#{@R1_basename}_paired.fastq results/#{@sampleid}/#{@R1_basename}_unpaired.fastq results/#{@sampleid}/#{@R2_basename}_paired.fastq results/#{@sampleid}/#{@R2_basename}_unpaired.fastq ILLUMINACLIP:/tsl/software/testing/trimmomatic/0.36/x86_64/share/trimmomatic/adapters/ilmn_adapters.fa:2:30:10 SLIDINGWINDOW:10:20 MINLEN:50"
+  end
+
+  file "results/#{@sampleid}/#{@R2_basename}_paired.fastq" => ["#{@read1}", "#{@read2}"] do
+  end
+
+  task :run => ["fastqc:run",  "results/#{@sampleid}/#{@R1_basename}_paired.fastq", "results/#{@sampleid}/#{@R2_basename}_paired.fastq" ] do
+    puts "Trimmomatic completed"
+  end
+
+end
+
+namespace :indexing do
+ file "#{@reference}.1.bt2" => ["#{@reference}"] do
+   sh "source bowtie2-2.1.0;  bowtie2-build -f   #{@reference}  #{@reference} "
+ end
+ file "#{@reference}.2.bt2" => ["#{@reference}"] do
+ end
+ file "#{@reference}.3.bt2" => ["#{@reference}"] do
+ end
+ file "#{@reference}.4.bt2" => ["#{@reference}"] do
+ end
+ file "#{@reference}.rev.1.bt2" => ["#{@reference}"] do
+ end
+ file "#{@reference}.rev.2.bt2" => ["#{@reference}"] do
+ end
+
+ task :bowtie => ["#{@reference}.1.bt2", "#{@reference}.2.bt2", "#{@reference}.3.bt2", "#{@reference}.4.bt2", "#{@reference}.rev.1.bt2", "#{@reference}.rev.2.bt2" ] do
+   puts "Bowtie reference indexing completed"
+ end
+
+ file "#{@refindex}.1.bt2" => ["#{@reference}"] do
+   sh "source bowtie2-2.1.0;  bowtie2-build -f   #{@reference}  #{@refindex} "
+ end
+ file "#{@refindex}.2.bt2" => ["#{@reference}"] do
+ end
+ file "#{@refindex}.3.bt2" => ["#{@reference}"] do
+ end
+ file "#{@refindex}.4.bt2" => ["#{@reference}"] do
+ end
+ file "#{@refindex}.rev.1.bt2" => ["#{@reference}"] do
+ end
+ file "#{@refindex}.rev.2.bt2" => ["#{@reference}"] do
+ end
+
+ task :tophat => ["#{@refindex}.1.bt2", "#{@refindex}.2.bt2", "#{@refindex}.3.bt2", "#{@refindex}.4.bt2", "#{@refindex}.rev.1.bt2", "#{@refindex}.rev.2.bt2"]
+end
+
+namespace :Bowtie do
+ file "results/#{@sampleid}/#{@sampleid}_paired_aligned_sorted.bam" => ["trimmomatic:run"] do
+  sh "source bowtie2-2.2.9; bowtie2 -q --phred33 -k 1 --reorder --very-sensitive-local --no-unal --rg-id #{@sampleid} --rg \"platform:Illumina\" --no-unal -x #{@reference} -1 results/#{@sampleid}/#{@R1_basename}_paired.fastq -2 results/#{@sampleid}/#{@R2_basename}_paired.fastq | samtools view -bS -t #{@reference}.dict --output-fmt BAM | samtools sort --output-fmt BAM --reference #{@reference} -o results/#{@sampleid}/#{@sampleid}_paired_aligned_sorted.bam"
+ end
+
+
+ task :run => ["indexing:bowtie", "results/#{@sampleid}/#{@sampleid}_paired_aligned_sorted.bam"] do
+   puts "Bowtie mapping completed"
+ end
+
+ end
+
+namespace :generate_snp do
+  # reads are mapped with tophat v2.1.1
+  # mpileup generation using samtools v1.3.1
+  # snp calling using bcftool
+
+  desc "map reads to reference sequence"
+  file "results/#{@sampleid}/#{@sampleid}_snp.vcf" => ["trimmomatic:run"] do
+    sh "source tophat-2.1.1; tophat --output-dir results/#{@sampleid} --min-intron-length 20 --no-discordant --no-mixed --b2-very-sensitive --rg-id #{@sampleid} --rg-sample #{@sample} #{@refindex} results/#{@sampleid}/#{@R1_basename}_paired.fastq results/#{@sampleid}/#{@R2_basename}_paired.fastq"
+    sh "source samtools-1.3.1; source bcftools-1.3.1; samtools mpileup --skip-indels -d 250 -m 1 -E --BCF --output-MQ --output-BP --min-MQ 20 --min-BQ 20 -f #{@reference} results/#{@sampleid}/accepted_hits.bam | bcftools call --skip-variants indels --multiallelic-caller --variants-only  -O v -o results/#{@sampleid}/#{@sampleid}_snp.vcf &&  rm results/#{@sampleid}/accepted_hits.bam"
+  end
+
+  task :run => ["indexing:tophat", "results/#{@sampleid}/#{@sampleid}_snp.vcf"]
+end
+
+task :clean do
+  sh "rm results/#{@sampleid}/#{@R1_basename}_paired.fastq results/#{@sampleid}/#{@R1_basename}_unpaired.fastq results/#{@sampleid}/#{@R2_basename}_paired.fastq results/#{@sampleid}/#{@R2_basename}_unpaired.fastq"
+end
+
+
+
+task :default =>["generate_snp:run", :clean]
