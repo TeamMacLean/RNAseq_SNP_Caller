@@ -137,9 +137,10 @@ namespace :generate_snp do
 
   desc "map reads to reference sequence"
   file "results/#{@sampleid}/#{@sampleid}_snp.vcf" => ["trimmomatic:run"] do
-    Rake::Task["indexing:tophat"].invoke
-    sh "source bowtie2-2.2.9; source tophat-2.1.1; tophat --output-dir results/#{@sampleid} --min-intron-length 20 --no-discordant --no-mixed --b2-very-sensitive --rg-id #{@sampleid} --rg-sample #{@sample} #{@refindex} results/#{@sampleid}/#{@R1_basename}_paired.fastq results/#{@sampleid}/#{@R2_basename}_paired.fastq"
-    sh "source samtools-1.3.1; source bcftools-1.3.1; samtools mpileup --skip-indels -d 250 -m 1 -E --BCF --output-MQ --output-BP --min-MQ 20 --min-BQ 20 -f #{@reference} results/#{@sampleid}/accepted_hits.bam | bcftools call --skip-variants indels --multiallelic-caller --variants-only  -O v -o results/#{@sampleid}/#{@sampleid}_snp.vcf &&  rm results/#{@sampleid}/accepted_hits.bam"
+     puts "sample_id = #{@sample_id}\n sample = #{@sample}\n refindex = #{@refindex}\n R1 = #{@R1_basename} \n R2 = #{@R2_basename}\n"
+  #  Rake::Task["indexing:tophat"].invoke
+  #  sh "source bowtie2-2.2.9; source tophat-2.1.1; tophat --output-dir results/#{@sampleid} --min-intron-length 20 --no-discordant --no-mixed --b2-very-sensitive --rg-id #{@sampleid} --rg-sample #{@sample} #{@refindex} results/#{@sampleid}/#{@R1_basename}_paired.fastq results/#{@sampleid}/#{@R2_basename}_paired.fastq"
+  #  sh "source samtools-1.3.1; source bcftools-1.3.1; samtools mpileup --skip-indels -d 250 -m 1 -E --BCF --output-MQ --output-BP --min-MQ 20 --min-BQ 20 -f #{@reference} results/#{@sampleid}/accepted_hits.bam | bcftools call --skip-variants indels --multiallelic-caller --variants-only  -O v -o results/#{@sampleid}/#{@sampleid}_snp.vcf &&  rm results/#{@sampleid}/accepted_hits.bam"
   end
 
   task :run => ["indexing:tophat", "results/#{@sampleid}/#{@sampleid}_snp.vcf"]
